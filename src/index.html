@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UwUChat2 Test</title>
+    <style>
+        #output, #serverTime {
+            width: 100%;
+            height: 150px;
+            border: 1px solid #ccc;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: monospace;
+        }
+        #serverTime {
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div id="serverTime"></div>
+    <div id="output"></div>
+    <script src="client.js"></script>
+    <script>
+        const client = new UwUChat2Client.default();
+        const output = document.getElementById('output');
+        const serverTimeDisplay = document.getElementById('serverTime');
+        const testRoom = 1; // Use room ID 1 for testing
+
+        client.init('ws://localhost:8080').then(() => {
+            console.log('Connected to server');
+
+            // Listen for messages in the test room
+            client.recv(testRoom, (msg) => {
+                const text = new TextDecoder().decode(msg);
+                output.textContent += text;
+            });
+
+            // Handle keypress events
+            document.addEventListener('keypress', (event) => {
+                const key = event.key;
+                const keyBuffer = new TextEncoder().encode(key);
+                client.send(testRoom, keyBuffer);
+            });
+
+            // Update server time display
+            function updateServerTime() {
+                const serverTime = new Date(client.time());
+                serverTimeDisplay.textContent = `Server Time: ${serverTime.toISOString()}`;
+                requestAnimationFrame(updateServerTime);
+            }
+            updateServerTime();
+
+        }).catch(console.error);
+    </script>
+</body>
+</html>

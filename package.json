@@ -5,18 +5,23 @@
   "main": "src/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc && webpack --mode production",
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc && webpack --mode production",
     "start": "node src/main.js",
     "prepublishOnly": "npm run build"
   },
   "author": "Victor Taelin <victor.taelin@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "glob": "^11.0.0",
     "isomorphic-ws": "^5.0.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",
+    "@types/ws": "^8.5.11",
+    "html-webpack-plugin": "^5.5.0",
+    "rimraf": "^6.0.1",
     "ts-loader": "^9.5.1",
     "webpack": "^5.93.0",
     "webpack-cli": "^5.1.4"

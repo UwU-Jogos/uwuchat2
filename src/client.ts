@@ -1,23 +1,10 @@
-//./spec.txt//
-//./server.ts//
-
-// Let's now create the uwuchat2/client.ts file. Do it below. Comment everything.
-// Optimize this for in-browser client usage. Use the 'ws' library from npm, and
-// Uint8Array instead of Node.js's buffer, for example. remember to always use
-// underscore_case, never CamelCase, for your variables, except for types.
-
-// uwuchat2/client.ts:
-
-// Import WebSocket for browser environments
 import WebSocket from 'isomorphic-ws';
 
-// Define types
 type Room = number;
 type Recv = (msg: Uint8Array) => void;
 type Exit = () => void;
 
-// Define message types
-const enum message_type {
+const enum MessageType {
   JOIN = 0,
   EXIT = 1,
   POST = 2,
@@ -27,9 +14,8 @@ const enum message_type {
   PONG = 6,
 }
 
-// UwUChat2 Client class
 class UwUChat2Client {
-  private ws: WebSocket;
+  private ws!: WebSocket;
   private rooms: Map<Room, Set<Recv>>;
   private server_time_offset: number;
   private best_ping: number;
@@ -39,9 +25,9 @@ class UwUChat2Client {
     this.rooms = new Map();
     this.server_time_offset = 0;
     this.best_ping = Infinity;
+    this.last_ping_time = 0;
   }
 
-  // Initialize the connection to the server
   public init(url: string): Promise<void> {
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(url);
@@ -50,21 +36,22 @@ class UwUChat2Client {
         this.sync_time();
         resolve();
       };
-      this.ws.onerror = (error) => reject(error);
-      this.ws.onmessage = (event) => this.handle_message(new Uint8Array(event.data as ArrayBuffer));
+      this.ws.onerror = (event: WebSocket.ErrorEvent) => reject(event);
+      this.ws.onmessage = (event: WebSocket.MessageEvent) => {
+        const data = event.data;
+        this.handle_message(new Uint8Array(data instanceof ArrayBuffer ? data : new ArrayBuffer(0)));
+      };
     });
   }
 
-  // Send a message to a specific room
   public send(room: Room, msg: Uint8Array): void {
     const buffer = new Uint8Array(7 + msg.length);
-    buffer[0] = message_type.POST;
+    buffer[0] = MessageType.POST;
     this.write_uint48_be(buffer, 1, room);
     buffer.set(msg, 7);
     this.ws.send(buffer);
   }
 
-  // Receive messages from a specific room
   public recv(room: Room, callback: Recv): Exit {
     if (!this.rooms.has(room)) {
       this.rooms.set(room, new Set());
@@ -81,53 +68,47 @@ class UwUChat2Client {
     };
   }
 
-  // Get the current server time
   public time(): number {
     return Date.now() + this.server_time_offset;
   }
 
-  // Handle incoming messages
   private handle_message(data: Uint8Array): void {
     const tag = data[0];
     switch (tag) {
-      case message_type.DATA:
+      case MessageType.DATA:
         const room = this.read_uint48_be(data, 1);
         const time = this.read_uint48_be(data, 7);
         const msg = data.slice(13);
         this.rooms.get(room)?.forEach(callback => callback(msg));
         break;
-      case message_type.PONG:
+      case MessageType.PONG:
         this.handle_pong(data);
         break;
     }
   }
 
-  // Join a room
   private join_room(room: Room): void {
     const buffer = new Uint8Array(7);
-    buffer[0] = message_type.JOIN;
+    buffer[0] = MessageType.JOIN;
     this.write_uint48_be(buffer, 1, room);
     this.ws.send(buffer);
   }
 
-  // Exit a room
   private exit_room(room: Room): void {
     const buffer = new Uint8Array(7);
-    buffer[0] = message_type.EXIT;
+    buffer[0] = MessageType.EXIT;
     this.write_uint48_be(buffer, 1, room);
     this.ws.send(buffer);
   }
 
-  // Synchronize time with the server
   private sync_time(): void {
     const buffer = new Uint8Array(1);
-    buffer[0] = message_type.PING;
+    buffer[0] = MessageType.PING;
     const send_time = Date.now();
     this.ws.send(buffer);
     this.last_ping_time = send_time;
   }
 
-  // Handle PONG message for time synchronization
   private handle_pong(data: Uint8Array): void {
     const receive_time = Date.now();
     const server_time = this.read_uint48_be(data, 1);
@@ -139,7 +120,6 @@ class UwUChat2Client {
     setTimeout(() => this.sync_time(), 3000);
   }
 
-  // Helper function to write a 48-bit unsigned integer in big-endian format
   private write_uint48_be(buffer: Uint8Array, offset: number, value: number): void {
     buffer[offset] = (value / 2 ** 40) & 0xFF;
     buffer[offset + 1] = (value / 2 ** 32) & 0xFF;
@@ -149,7 +129,6 @@ class UwUChat2Client {
     buffer[offset + 5] = value & 0xFF;
   }
 
-  // Helper function to read a 48-bit unsigned integer in big-endian format
   private read_uint48_be(buffer: Uint8Array, offset: number): number {
     return (buffer[offset] * 2 ** 40) +
            (buffer[offset + 1] * 2 ** 32) +

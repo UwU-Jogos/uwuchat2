@@ -1,12 +1,9 @@
-//./spec.txt//
-
 import WebSocket from 'ws';
 import { Buffer } from 'buffer';
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Types
 type Room = number;
 type Time = number;
 type Data = Buffer;
@@ -15,11 +12,10 @@ type Post = { data: Data; time: Time };
 type ServerState = {
   rooms: Map<Room, {
     clients: Set<WebSocket>;
-    messages: Array<Post>;
+    messages: Post[];
   }>;
 }
 
-// Message types
 const enum MessageType {
   JOIN = 0,
   EXIT = 1,
@@ -72,20 +68,17 @@ class Server {
   }
 
   private handle_disconnect(ws: WebSocket): void {
-    // Remove the client from all rooms when they disconnect
     this.state.rooms.forEach(room_data => room_data.clients.delete(ws));
   }
 
   private handle_join(ws: WebSocket, room: Room): void {
-    // Get or create the room data
     let room_data = this.state.rooms.get(room);
     if (!room_data) {
-      room_data = { clients: new Set(), messages: [] };
+      room_data = { clients: new Set<WebSocket>(), messages: [] as Post[] };
       this.state.rooms.set(room, room_data);
     }
     room_data.clients.add(ws);
 
-    // Send all existing messages in the room to the new client
     const buffer = Buffer.allocUnsafe(13);
     buffer.writeUInt8(MessageType.DATA, 0);
     buffer.writeUIntBE(room, 1, 6);
@@ -96,7 +89,6 @@ class Server {
   }
 
   private handle_exit(ws: WebSocket, room: Room): void {
-    // Remove the client from the specified room
     this.state.rooms.get(room)?.clients.delete(ws);
   }
 
@@ -104,30 +96,25 @@ class Server {
     const time = Date.now();
     const post: Post = { data, time };
 
-    // Get or create the room data
     let room_data = this.state.rooms.get(room);
     if (!room_data) {
-      room_data = { clients: new Set(), messages: [] };
+      room_data = { clients: new Set<WebSocket>(), messages: [] as Post[] };
       this.state.rooms.set(room, room_data);
     }
     room_data.messages.push(post);
 
-    // Prepare the message to be sent to all clients in the room
     const buffer = Buffer.allocUnsafe(13);
     buffer.writeUInt8(MessageType.DATA, 0);
     buffer.writeUIntBE(room, 1, 6);
     buffer.writeUIntBE(time, 7, 6);
     const message = Buffer.concat([buffer, data]);
 
-    // Broadcast the message to all clients in the room
     room_data.clients.forEach(client => client.send(message));
 
-    // Persist the message to disk
     this.persist_message(room, post);
   }
 
   private handle_ping(ws: WebSocket): void {
-    // Respond to PING with a PONG message containing the current server time
     const buffer = Buffer.allocUnsafe(7);
     buffer.writeUInt8(MessageType.PONG, 0);
     buffer.writeUIntBE(Date.now(), 1, 6);
@@ -154,7 +141,7 @@ class Server {
 
     fs.readdirSync(data_dir).forEach(file => {
       const room = parseInt(file, 16);
-      const room_data = { clients: new Set(), messages: [] };
+      const room_data = { clients: new Set<WebSocket>(), messages: [] as Post[] };
       this.state.rooms.set(room, room_data);
 
       const file_path = path.join(data_dir, file);
