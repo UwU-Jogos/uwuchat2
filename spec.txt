@@ -1,0 +1,48 @@
+We're creating a real-time gaming network library in Node.js, using raw
+WebSockets. This file is called UwUChat2.ts, and it implements both the
+server and the client. Its API is very simple:
+
+Client:
+- init(url: String): connects to a server
+- send(room: RoomID, msg: Buffer): sends a message to a room
+- recv(room: RoomID, msg: Buffer -> IO ()) -> (exit: () -> IO()): listens to messages in a room
+- time(): returns the global, server time
+
+Server:
+- init(): starts serving
+
+When a client calls recv:
+1. The client sends a JOIN message to the server, with the room id
+2. The server sends ALL messages on this room to the client 
+3. The server adds the client to this room's listeners
+
+When a client calls the exit function:
+1. The client sends a EXIT message to the server, with the room id
+2. The server removes the client from this room's listeners
+
+When a client sends a message:
+1. The client sends a POST message to the server, with the buffer
+2. The server appends the current timestamp, as an u48, after the buffer
+3. The server adds the buffer to this room's database (for persistence)
+4. The server broadcasts the buffer to all listeners of this room
+
+For persistence:
+We use a simple filesystem approach (no DB). When the server receives a message,
+it pushes it, serialized, to a file (data/<ROOM>), where <ROOM> is the hex
+representation of the room id, which has 12 chars (48-bit). When the server
+opens, it will load ALL rooms into memory. Then, it only serves from memory.
+Files are only used to persist the state, and reload it, when we reopen.
+
+For networking:
+A compact binary message format is used: `<MSG_TAG_BYTE>|<MSG_CONTENTS>`. Each
+message type (JOIN, EXIT, POST, DATA, TIME...) has a unique tag id. It should be
+optimized for size and performance, avoiding long messages, and avoiding costly
+CPU serializing logic.
+
+For timesync:
+Periodically, the client sends a PING message to the server. The server then
+responds with a PONG message, and its current timestamp. The client uses that to
+estimate the server current time, with an error equal to the PING. If the error
+is lower than the best error so far, we update our local estimated server time.
+The PING messages sent use adaptative frequency: i.e., sent more often initially
+(when error is high), and sent less and less over time.
