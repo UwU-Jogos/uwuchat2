@@ -1,6 +1,5 @@
 import WebSocket from 'ws';
 import { Buffer } from 'buffer';
-import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -27,22 +26,18 @@ const enum MessageType {
 }
 
 class Server {
-  private state: ServerState;
-  private server: http.Server;
+  private state: ServerState
   private wss: WebSocket.Server;
 
-  constructor() {
+  constructor(private port: number) {
     this.state = { rooms: new Map() };
-    this.server = http.createServer();
-    this.wss = new WebSocket.Server({ server: this.server });
+    this.wss = new WebSocket.Server({ port: this.port });
   }
 
-  public init(port: number = 8080): void {
+  public init(): void {
     this.load_persisted_data();
     this.wss.on('connection', this.handle_connection.bind(this));
-    this.server.listen(port, () => {
-      console.log(`Server is listening on port ${port}`);
-    });
+    console.log(`WebSocket server is listening on port ${this.port}`);
   }
 
   private handle_connection(ws: WebSocket): void {
