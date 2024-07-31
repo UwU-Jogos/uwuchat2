@@ -26,7 +26,7 @@ const enum MessageType {
   PONG = 6,
 }
 
-class Server {
+export class UwUChat2Server {
   private state: ServerState;
   private server: http.Server;
   private wss: WebSocket.Server;
@@ -37,7 +37,7 @@ class Server {
     this.wss = new WebSocket.Server({ server: this.server });
   }
 
-  public init(port: number = 8080): void {
+  public init(port: number = 7171): void {
     this.load_persisted_data();
     this.wss.on('connection', this.handle_connection.bind(this));
     this.server.listen(port, () => {
@@ -159,5 +159,3 @@ class Server {
     });
   }
 }
-
-export default Server;

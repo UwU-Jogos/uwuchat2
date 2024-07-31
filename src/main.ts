@@ -1,10 +1,4 @@
-//./spec.txt//
-//./server.ts//
+import { UwUChat2Server } from './server';
 
-// main.ts:
-// just starts a server on port 8080
-
-import Server from './server';
-
-const server = new Server();
-server.init(8080);
+const server = new UwUChat2Server();
+server.init(7171);

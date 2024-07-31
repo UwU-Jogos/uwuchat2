@@ -14,7 +14,7 @@ const enum MessageType {
   PONG = 6,
 }
 
-class UwUChat2Client {
+export class UwUChat2Client {
   private ws!: WebSocket;
   private rooms: Map<Room, Set<Recv>>;
   private server_time_offset: number;
@@ -138,5 +138,3 @@ class UwUChat2Client {
            buffer[offset + 5];
   }
 }
-
-export default UwUChat2Client;
