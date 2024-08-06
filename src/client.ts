@@ -71,6 +71,10 @@ export class UwUChat2Client {
   public time(): number {
     return Date.now() + this.server_time_offset;
   }
+  
+  public ping(): number {
+    return this.best_ping;
+  }
 
   private handle_message(data: Uint8Array): void {
     const tag = data[0];
